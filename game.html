@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>두바이 쫀득 쿠키 타이쿤</title>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Gamja+Flower&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-wall: #4E342E;
+            --bg-counter: #8D6E63;
+            --kitchen-bg: #FFF8E1;
+            --ui-accent: #FF7043;
+        }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: #3E2723;
+            font-family: 'Jua', sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh;
+            user-select: none; overflow: hidden;
+        }
+
+        #game-container {
+            width: 480px; height: 800px;
+            background-color: var(--kitchen-bg);
+            border-radius: 20px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.6);
+            position: relative;
+            overflow: hidden;
+            display: flex; flex-direction: column;
+            border: 8px solid #3E2723;
+        }
+
+        /* --- UI 헤더 --- */
+        .header {
+            flex: 0 0 50px;
+            background: #3E2723; color: #FFF;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 15px; font-size: 18px; z-index: 50;
+            border-bottom: 2px solid #5D4037;
+        }
+        .header button {
+            background: #FFCA28; border: none; border-radius: 5px;
+            padding: 5px 10px; cursor: pointer; font-family: inherit; font-weight: bold;
+            color: #3E2723; transition: transform 0.1s;
+        }
+        .header button:active { transform: scale(0.95); }
+        .hearts { color: #FF5252; letter-spacing: 2px; }
+
+        /* --- 카운터 (손님) --- */
+        #counter-area {
+            flex: 0 0 220px;
+            background: var(--bg-wall);
+            position: relative;
+            border-bottom: 12px solid #3E2723;
+            display: flex; align-items: flex-end; justify-content: space-around;
+            padding-bottom: 10px;
+            background-image: radial-gradient(#6D4C41 15%, transparent 16%);
+            background-size: 20px 20px;
+        }
+
+        #ticket-rail {
+            position: absolute; top: 0; left: 0; width: 100%; height: 60px;
+            background: #BCAAA4; border-bottom: 4px solid #795548;
+            display: flex; align-items: start; padding-left: 10px; gap: 8px; z-index: 20;
+        }
+        .ticket {
+            width: 70px; height: 95px;
+            background: #FFF; border: 1px solid #AAA;
+            box-shadow: 2px 3px 5px rgba(0,0,0,0.3);
+            display: flex; flex-direction: column; align-items: center;
+            position: relative; margin-top: -5px; transition: 0.2s; cursor: pointer;
+        }
+        .ticket:hover { margin-top: 0; }
+        .ticket.active { border: 3px solid var(--ui-accent); background: #FFF8E1; margin-top: 2px; }
+        
+        .customer-wrapper {
+            position: relative; width: 100px; height: 160px;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+        }
+        .bubble {
+            position: absolute; top: -40px; background: white; padding: 5px 12px;
+            border-radius: 15px; border: 2px solid #333; font-weight: bold; cursor: pointer;
+            animation: bounce 1s infinite; display: none; z-index: 30;
+            box-shadow: 2px 2px 0 #AAA;
+        }
+        @keyframes bounce { 0%, 100% {transform:translateY(0);} 50% {transform:translateY(-5px);} }
+
+        /* 동물 캐릭터 */
+        .animal { width: 90px; height: 90px; position: relative; transition: transform 0.2s; }
+        .head { width: 100%; height: 100%; border-radius: 50%; position: absolute; box-shadow: inset -4px -4px 10px rgba(0,0,0,0.15); z-index: 2; }
+        .face { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60px; height: 50px; z-index: 3; }
+        .eye { width: 10px; height: 10px; background: #333; border-radius: 50%; position: absolute; top: 15px; transition: 0.3s; }
+        .eye.L { left: 10px; } .eye.R { right: 10px; }
+        .mouth { width: 10px; height: 5px; border-bottom: 3px solid #333; border-radius: 50%; position: absolute; top: 30px; left: 25px; transition: 0.3s; }
+        
+        .angry .eye { top: 18px; height: 4px; border-radius: 0; transform: rotate(15deg); }
+        .angry .eye.R { transform: rotate(-15deg); }
+        .angry .head { filter: sepia(1) hue-rotate(-50deg) saturate(3); }
+
+        .bear .head { background: #A1887F; } .bear .ear { background: #8D6E63; width: 28px; height: 28px; border-radius: 50%; position: absolute; top: -8px; } .bear .ear.L { left: 0; } .bear .ear.R { right: 0; }
+        .rabbit .head { background: #FFF; } .rabbit .ear { background: #FFF; width: 20px; height: 50px; border-radius: 20px; position: absolute; top: -35px; border: 2px solid #EEE; } .rabbit .ear.L { left: 10px; transform:rotate(-10deg); } .rabbit .ear.R { right: 10px; transform:rotate(10deg); }
+        
+        /* --- 주방 --- */
+        #kitchen-area {
+            flex: 1; display: flex; flex-direction: column;
+            background: url('https://www.transparenttextures.com/patterns/wood-pattern.png'), #FFF3E0;
+            position: relative;
+        }
+
+        #board-container {
+            flex: 1; display: flex; justify-content: center; align-items: center;
+        }
+
+        #board {
+            width: 280px; height: 280px;
+            background: #E0E0E0; border-radius: 50%; border: 6px solid #BDBDBD;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            position: relative;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer;
+        }
+
+        /* 쿠키 베이스 */
+        .base-layer {
+            width: 220px; height: 220px; border-radius: 50%; position: absolute;
+            box-shadow: inset -5px -5px 15px rgba(0,0,0,0.3);
+            display: none; transition: transform 0.2s;
+        }
+        .base-plain { background: radial-gradient(circle at 30% 30%, #ECD0A3, #CFA876); }
+        .base-choco { background: radial-gradient(circle at 30% 30%, #8D6E63, #5D4037); }
+
+        /* ★ 왕 필링 (Huge Filling) ★ */
+        .filling-blob {
+            position: absolute;
+            /* 기본적으로 큼직하게 */
+            width: 130px; height: 130px;
+            background-color: #9CCC65; 
+            border-radius: 50%; 
+            transform: translate(-50%, -50%) scale(0.9);
+            box-shadow: inset 5px 5px 10px rgba(255,255,255,0.3), 3px 3px 10px rgba(0,0,0,0.3);
+            transition: border-radius 0.1s, transform 0.1s;
+        }
+        .texture-kataifi {
+            background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.15) 0px, rgba(255,255,255,0.15) 3px, transparent 3px, transparent 6px);
+        }
+
+        .coat-layer {
+            width: 230px; height: 230px; border-radius: 50%; position: absolute;
+            opacity: 0; transition: opacity 0.5s; z-index: 10;
+            box-shadow: inset 10px 10px 30px rgba(255,255,255,0.4);
+        }
+
+        /* --- 재료함 & 쓰레기통 --- */
+        #bins {
+            height: 140px; background: #FFF; border-top: 5px solid #8D6E63;
+            display: flex; flex-direction: column;
+        }
+        .tabs { display: flex; height: 40px; background: #D7CCC8; }
+        .tab { flex: 1; border: none; background: transparent; cursor: pointer; font-family: 'Jua'; font-size: 18px; color: #5d4037; }
+        .tab.active { background: #FFF; font-weight: bold; border-top: 4px solid var(--ui-accent); color: var(--ui-accent); }
+        
+        .bin-row { flex: 1; display: flex; align-items: center; justify-content: center; gap: 15px; overflow-x: auto; }
+        .bin {
+            width: 70px; height: 70px; border-radius: 10px; background: #F5F5F5; border: 2px solid #CCC;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; position: relative; transition: all 0.2s;
+        }
+        .bin.selected { background: #FFF3E0; border-color: var(--ui-accent); transform: translateY(-5px); box-shadow: 0 5px 10px rgba(0,0,0,0.1); }
+        .bin.locked { opacity: 0.5; filter: grayscale(1); }
+
+        .trash-btn {
+            position: absolute; bottom: 160px; right: 20px;
+            width: 50px; height: 50px; border-radius: 50%; background: #EF5350;
+            border: none; font-size: 24px; cursor: pointer; color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 15;
+        }
+        .trash-btn:active { transform: scale(0.9); }
+
+        /* --- 오버레이 --- */
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100;
+            color: white; text-align: center;
+        }
+        .popup-box {
+            background: white; color: #333; padding: 25px; border-radius: 20px;
+            width: 80%; max-width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .big-btn {
+            margin-top: 15px; padding: 12px 30px; font-size: 20px;
+            background: var(--ui-accent); color: white; border: none;
+            border-radius: 50px; cursor: pointer; font-family: 'Jua';
+            box-shadow: 0 4px 0 #E64A19;
+        }
+        .big-btn:active { transform: translateY(4px); box-shadow: none; }
+        .shop-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #EEE; }
+        .buy-btn { background: #29B6F6; color: white; border: none; padding: 5px 12px; border-radius: 15px; cursor: pointer; font-family: 'Jua'; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div class="header">
+        <div class="hearts" id="heart-display">❤️❤️❤️❤️❤️</div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <span>💰 <span id="money">0</span></span>
+            <button onclick="pauseGame()">일시정지</button>
+            <button onclick="openShop()">🛒 상점</button>
+        </div>
+    </div>
+
+    <div id="counter-area">
+        <div id="ticket-rail"></div>
+        <div id="customers-layer" style="width:100%; display:flex; justify-content:space-around; position:absolute; bottom:0;"></div>
+    </div>
+
+    <div id="kitchen-area">
+        <div id="board-container">
+            <div id="board">
+                <div id="layer-base" class="base-layer"></div>
+                <div id="layer-fill-container" style="position:absolute; width:100%; height:100%; pointer-events:none;"></div>
+                <div id="layer-coat" class="coat-layer"></div>
+                
+                <div id="guide-text" style="position:absolute; color:#888; font-size:14px; display:none; background:rgba(255,255,255,0.8); padding:5px; border-radius:10px;">문질러서 펴바르기!</div>
+            </div>
+        </div>
+
+        <button class="trash-btn" onclick="trashCookie()">🗑️</button>
+
+        <div id="bins">
+            <div class="tabs">
+                <button class="tab active" onclick="setTab('base')">1. 반죽</button>
+                <button class="tab" onclick="setTab('fill')">2. 필링</button>
+                <button class="tab" onclick="setTab('coat')">3. 코팅</button>
+            </div>
+            <div class="bin-row" id="bin-row"></div>
+        </div>
+    </div>
+
+    <div id="start-overlay" class="overlay">
+        <div class="popup-box">
+            <h1 style="color:#FF7043; margin:0;">🍪 두바이 쿠키 타이쿤</h1>
+            <p>1. 울퉁불퉁한 필링을 <b>마우스로 문질러서</b><br>매끈하게 펴발라주세요.</p>
+            <p>2. 좋은 재료를 쓰면 비싸게 팔려요.</p>
+            <button class="big-btn" onclick="startGame()">영업 시작!</button>
+        </div>
+    </div>
+
+    <div id="pause-overlay" class="overlay" style="display:none;">
+        <h1 style="font-size:3rem;">일시 정지</h1>
+        <button class="big-btn" onclick="resumeGame()">계속 하기 ▶</button>
+    </div>
+
+    <div id="shop-overlay" class="overlay" style="display:none;">
+        <div class="popup-box">
+            <h2>🛒 재료 상점</h2>
+            <div id="shop-list" style="text-align:left; max-height:300px; overflow-y:auto; margin-bottom:15px;"></div>
+            <button class="big-btn" style="background:#757575; font-size:16px; padding:10px 20px;" onclick="closeShop()">닫기</button>
+        </div>
+    </div>
+
+    <div id="game-over-overlay" class="overlay" style="display:none;">
+        <h1 style="color:#FF5252">영업 종료</h1>
+        <p>손님들이 모두 화나서 떠났습니다...</p>
+        <button class="big-btn" onclick="location.reload()">처음부터 다시</button>
+    </div>
+</div>
+
+<script>
+    // --- 데이터 ---
+    const DB = {
+        base: [
+            { id: 'plain', name: '기본 반죽', color: '#ECD0A3', class: 'base-plain', cost: 0, salePrice: 10, unlocked: true },
+            { id: 'choco', name: '초코 반죽', color: '#795548', class: 'base-choco', cost: 150, salePrice: 20, unlocked: false }
+        ],
+        fill: [
+            { id: 'pistachio', name: '피스타치오', color: '#9CCC65', cost: 0, salePrice: 30, unlocked: true }, // 두바이 근본
+            { id: 'cheese', name: '황치즈', color: '#FFEB3B', cost: 200, salePrice: 50, unlocked: false },
+            { id: 'raspberry', name: '라즈베리', color: '#E91E63', cost: 300, salePrice: 60, unlocked: false }
+        ],
+        coat: [
+            { id: 'choco', name: '다크초코', color: '#3E2723', cost: 0, salePrice: 10, unlocked: true },
+            { id: 'white', name: '화이트초코', color: '#FCE4EC', cost: 150, salePrice: 25, unlocked: false },
+            { id: 'gold', name: '식용 금박', color: '#FFD700', cost: 500, salePrice: 100, unlocked: false }
+        ]
+    };
+
+    let state = {
+        money: 0,
+        lives: 5,
+        paused: true,
+        activeTab: 'base',
+        selectedIng: null,
+        customers: [],
+        
+        // 조리 상태 (필링을 단일 객체로 변경)
+        kitchen: {
+            base: null,
+            filling: null, // { id, x, y, smoothness, el } -> 이제 하나만!
+            coat: null
+        }
+    };
+
+    // --- 게임 기본 ---
+    function startGame() {
+        document.getElementById('start-overlay').style.display = 'none';
+        state.paused = false;
+        renderBins();
+        spawnCustomer();
+        setInterval(() => { if(!state.paused && state.customers.length < 3 && Math.random() > 0.6) spawnCustomer(); }, 5000);
+        setInterval(gameTick, 500);
+    }
+
+    function gameTick() {
+        if(state.paused) return;
+        state.customers.forEach((c, idx) => {
+            if(c.status === 'done') return;
+            c.patience -= 0.8;
+            updateCustomerVisual(c);
+            if(c.patience <= 0) {
+                state.lives--; updateLives(); removeCustomer(idx);
+                if(state.lives <= 0) gameOver();
+            }
+        });
+    }
+
+    function updateLives() { document.getElementById('heart-display').innerText = "❤️".repeat(state.lives); }
+    function gameOver() { state.paused = true; document.getElementById('game-over-overlay').style.display = 'flex'; }
+    function pauseGame() { state.paused = true; document.getElementById('pause-overlay').style.display = 'flex'; }
+    function resumeGame() { state.paused = false; document.getElementById('pause-overlay').style.display = 'none'; }
+
+    // --- 손님 & 주문 ---
+    function spawnCustomer() {
+        const types = ['bear', 'rabbit'];
+        const type = types[Math.floor(Math.random()*types.length)];
+        const getR = (k) => { const l = DB[k].filter(i=>i.unlocked); return l[Math.floor(Math.random()*l.length)]; };
+        const order = { base: getR('base'), fill: getR('fill'), coat: getR('coat') };
+        state.customers.push({ id: Date.now(), type, order, patience: 100, status: 'waiting' });
+        renderCustomers();
+    }
+
+    function updateCustomerVisual(c) {
+        const el = document.getElementById(`cust-${c.id}`);
+        if(!el) return;
+        const wrapper = el.querySelector('.animal');
+        if(c.patience < 40) wrapper.classList.add('angry');
+        else wrapper.classList.remove('angry');
+    }
+
+    function takeOrder(id) {
+        if(state.paused) return;
+        const c = state.customers.find(x => x.id === id);
+        if(!c || c.status !== 'waiting') return;
+        c.status = 'ordered';
+        c.patience = 100; // 주문 받으면 화 풀림 (초기화)
+        renderCustomers(); // 말풍선 제거 위함
+        createTicket(c);
+    }
+
+    function createTicket(c) {
+        const rail = document.getElementById('ticket-rail');
+        const t = document.createElement('div');
+        t.className = 'ticket';
+        t.id = `ticket-${c.id}`;
+        t.onclick = () => serveCookie(c.id);
+        t.innerHTML = `
+            <div style="font-weight:bold;margin-top:5px;color:#555">#${c.id.toString().slice(-3)}</div>
+            <div style="display:flex;gap:3px;margin-top:5px;">
+                <div style="width:12px;height:12px;border-radius:50%;background:${c.order.base.color}"></div>
+                <div style="width:12px;height:12px;border-radius:50%;background:${c.order.fill.color}"></div>
+                <div style="width:12px;height:12px;border-radius:50%;background:${c.order.coat.color};border:1px solid #333"></div>
+            </div>
+            <div style="font-size:12px;color:#E64A19;font-weight:bold;margin-top:auto;margin-bottom:5px;">SERVE</div>`;
+        rail.appendChild(t);
+    }
+
+    // --- ★ 주방 인터랙션 (핵심 변경) ★ ---
+    const board = document.getElementById('board');
+    
+    // 1. 문지르기 (Rubbing)
+    board.addEventListener('mousemove', (e) => {
+        if(state.paused) return;
+        
+        // 필링 탭이고, 반죽이 있고, 코팅 전이고, ★필링이 이미 올라가 있다면★
+        if(state.activeTab === 'fill' && state.kitchen.base && !state.kitchen.coat && state.kitchen.filling) {
+            const fill = state.kitchen.filling;
+            if(fill.smoothness >= 100) return; // 이미 완성됨
+
+            const rect = board.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+
+            // 중앙 필링과의 거리 (중앙 좌표 140, 140)
+            // 필링 자체가 크므로 거리 판정 범위도 크게 (60px)
+            const dx = mx - fill.x;
+            const dy = my - fill.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+
+            if(dist < 70) { // 왕 필링 위를 지나가면
+                fill.smoothness += 4; // 쓱쓱
+                updateFillShape(fill);
+            }
+        }
+    });
+
+    // 2. 재료 놓기 (Click)
+    board.addEventListener('mousedown', (e) => {
+        if(state.paused || !state.selectedIng) return;
+
+        if(state.activeTab === 'base') {
+            if(!state.kitchen.base) {
+                state.kitchen.base = state.selectedIng;
+                const el = document.getElementById('layer-base');
+                el.className = `base-layer ${state.selectedIng.class}`;
+                el.style.display = 'block';
+                el.animate([{transform:'scale(0)'}, {transform:'scale(1)'}], {duration:300});
+            }
+        }
+        else if(state.activeTab === 'fill') {
+            if(!state.kitchen.base) { alert("반죽부터 깔아주세요!"); return; }
+            if(state.kitchen.coat) return;
+            
+            // ★ 이미 필링이 있으면 더 못 올림 (하나만!) ★
+            if(state.kitchen.filling) {
+                // alert("필링은 하나만 가득 채우세요!"); // 알림은 생략하고 그냥 무시 (게임 흐름상)
+                return;
+            }
+
+            // 필링 생성 (항상 정중앙에 배치)
+            const x = 140; 
+            const y = 140;
+
+            const fillObj = { id: state.selectedIng.id, x, y, smoothness: 0, el: null };
+            
+            const div = document.createElement('div');
+            div.className = 'filling-blob texture-kataifi';
+            // 위치는 CSS transform으로 중앙정렬 되어있음 (left/top만 지정)
+            div.style.left = x + 'px';
+            div.style.top = y + 'px';
+            div.style.backgroundColor = state.selectedIng.color;
+            
+            document.getElementById('layer-fill-container').appendChild(div);
+            fillObj.el = div;
+            state.kitchen.filling = fillObj; // 배열 아님!
+
+            updateFillShape(fillObj);
+
+            // 가이드 표시
+            const guide = document.getElementById('guide-text');
+            guide.style.display = 'block';
+            guide.style.left = '90px'; guide.style.top = '100px';
+            setTimeout(()=> guide.style.display='none', 2000);
+        }
+        else if(state.activeTab === 'coat') {
+            if(!state.kitchen.base) return;
+            state.kitchen.coat = state.selectedIng;
+            const el = document.getElementById('layer-coat');
+            el.style.backgroundColor = state.selectedIng.color;
+            el.style.opacity = '1';
+        }
+    });
+
+    function updateFillShape(fill) {
+        const s = fill.smoothness;
+        const el = fill.el;
+        
+        if(s >= 100) {
+            // 완벽하게 펴발라짐
+            el.style.borderRadius = '50%';
+            el.style.transform = 'translate(-50%, -50%) scale(1.1)'; // 살짝 더 커짐
+            el.style.boxShadow = '0 0 15px white'; // 광택
+        } else {
+            // 찌그러진 모양 (랜덤)
+            const rand = () => 35 + Math.random() * 30; // 35~65 범위
+            const lerp = (start, end, t) => start * (1-t) + end * t;
+            const t = s / 100;
+            
+            // t가 0에 가까울수록 랜덤, 1에 가까울수록 50(원형)
+            const r1 = lerp(rand(), 50, t);
+            const r2 = lerp(rand(), 50, t);
+            const r3 = lerp(rand(), 50, t);
+            const r4 = lerp(rand(), 50, t);
+            
+            el.style.borderRadius = `${r1}% ${100-r1}% ${r3}% ${100-r3}% / ${r2}% ${r4}% ${100-r4}% ${100-r2}%`;
+            // 덜 펴발라졌을 때는 약간 작게
+            el.style.transform = `translate(-50%, -50%) scale(${0.9 + t*0.2})`; 
+        }
+    }
+
+    // --- 서빙 ---
+    function serveCookie(custId) {
+        if(state.paused) return;
+        const c = state.customers.find(x => x.id === custId);
+        if(!c) return;
+
+        if(!state.kitchen.base || !state.kitchen.coat) { alert("완성되지 않았습니다!"); return; }
+
+        // 단일 필링 체크
+        const myFill = state.kitchen.filling;
+        const hasFill = myFill !== null;
+        
+        const matchBase = state.kitchen.base.id === c.order.base.id;
+        const matchCoat = state.kitchen.coat.id === c.order.coat.id;
+        const matchFill = hasFill && (myFill.id === c.order.fill.id);
+
+        let totalPrice = 0;
+        let msg = "";
+
+        if(!matchBase || !matchCoat || !matchFill) {
+            msg = "🤬 손님: 이게 아니잖아요! (0원)";
+        } else {
+            // 모양 평가 (하나뿐인 필링의 smoothness)
+            const smoothness = myFill.smoothness;
+            const rawPrice = c.order.base.salePrice + c.order.fill.salePrice + c.order.coat.salePrice + 50;
+
+            if(smoothness >= 90) {
+                totalPrice = Math.floor(rawPrice * 1.5);
+                msg = `😍 손님: 두바이 현지의 맛! (+${totalPrice}원)`;
+            } else {
+                totalPrice = Math.floor(rawPrice * 0.7);
+                msg = `🤔 손님: 맛은 있는데 모양이 덜 잡혔네요. (+${totalPrice}원)`;
+            }
+        }
+
+        alert(msg);
+        state.money += totalPrice;
+        document.getElementById('money').innerText = state.money;
+        
+        removeCustomer(state.customers.indexOf(c));
+        trashCookie();
+    }
+
+    function removeCustomer(idx) {
+        const c = state.customers[idx];
+        const t = document.getElementById(`ticket-${c.id}`);
+        if(t) t.remove();
+        state.customers.splice(idx, 1);
+        renderCustomers();
+    }
+
+    function trashCookie() {
+        state.kitchen = { base:null, filling:null, coat:null };
+        document.getElementById('layer-base').style.display = 'none';
+        document.getElementById('layer-fill-container').innerHTML = '';
+        document.getElementById('layer-coat').style.opacity = '0';
+    }
+
+    // --- UI 유틸 ---
+    function renderCustomers() {
+        const layer = document.getElementById('customers-layer');
+        layer.innerHTML = '';
+        state.customers.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'customer-wrapper';
+            div.id = `cust-${c.id}`;
+            const bDisplay = c.status === 'waiting' ? 'block' : 'none';
+            div.innerHTML = `
+                <div class="bubble" id="bubble-${c.id}" style="display:${bDisplay}" onclick="takeOrder(${c.id})">주문!</div>
+                <div class="animal ${c.type}">
+                    <div class="ear L"></div><div class="ear R"></div>
+                    <div class="head"><div class="face"><div class="eye L"></div><div class="eye R"></div><div class="mouth"></div></div></div>
+                </div>`;
+            layer.appendChild(div);
+        });
+    }
+
+    function setTab(t) {
+        state.activeTab = t; state.selectedIng = null;
+        document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+        event.target.classList.add('active');
+        renderBins();
+    }
+
+    function renderBins() {
+        const row = document.getElementById('bin-row');
+        row.innerHTML = '';
+        DB[state.activeTab].forEach(ing => {
+            const div = document.createElement('div');
+            div.className = `bin ${ing.unlocked?'':'locked'} ${state.selectedIng===ing?'selected':''}`;
+            div.onclick = () => { if(ing.unlocked) { state.selectedIng=ing; renderBins(); } };
+            div.innerHTML = `<div style="width:30px;height:30px;background:${ing.color};border-radius:50%;margin-bottom:5px;border:1px solid #ddd"></div><span style="font-size:12px">${ing.name}</span>`;
+            row.appendChild(div);
+        });
+    }
+
+    function openShop() {
+        state.paused = true;
+        const l = document.getElementById('shop-list'); l.innerHTML = '';
+        ['base','fill','coat'].forEach(k => {
+            DB[k].forEach(i => {
+                if(!i.unlocked) {
+                    l.innerHTML += `<div class="shop-item"><div><b>${i.name}</b><br><span style="font-size:12px;color:#888">판가 +${i.salePrice}</span></div><button class="buy-btn" onclick="buy('${k}','${i.id}',${i.cost})">${i.cost}</button></div>`;
+                }
+            });
+        });
+        if(l.innerHTML === '') l.innerHTML = '<p>모두 획득 완료!</p>';
+        document.getElementById('shop-overlay').style.display = 'flex';
+    }
+    function closeShop() { document.getElementById('shop-overlay').style.display = 'none'; state.paused = false; }
+    function buy(k, id, c) {
+        if(state.money >= c) { state.money-=c; document.getElementById('money').innerText=state.money; DB[k].find(x=>x.id===id).unlocked=true; openShop(); if(state.activeTab===k) renderBins(); }
+        else alert("돈 부족!");
+    }
+</script>
+</body>
+</html>
